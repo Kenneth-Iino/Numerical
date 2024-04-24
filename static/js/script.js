@@ -6,11 +6,29 @@ menuBar.addEventListener('click', function () {
 	sidebar.classList.toggle('hide');
 })
 
+// Show loading spinner when the page starts loading
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('loading-spinner').style.display = 'block';
+});
+
+// Hide loading spinner when the table finishes loading
+window.addEventListener('load', function() {
+    document.getElementById('loading-spinner').style.display = 'none';
+});
 
 
+reloadDelay = 0;
+function setDelayForReload(){
+  reloadDelay = 3000;
+}
 
+function reloadPage(){
+if(reloadDelay == 0){
+  window.location.reload()
+}
 
-
+}
+setTimeout(reloadPage, 3000)
 
 
 const searchButton = document.querySelector('#content nav form .form-input button');

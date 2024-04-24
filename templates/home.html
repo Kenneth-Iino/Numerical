@@ -7,47 +7,255 @@
 
 {% block content %}
 
-	<h2>Multiple Linear Regression</h2>
+	<h1>Multiple Linear Regression</h1>
 
 	<form id="csvFile" enctype="multipart/form-data" id="csvFile" method="post">
         {% csrf_token %}
         {{ form.path }}
         {{ form.as_p }}
-		<button type="submit">Submit</button>
+		<input type="submit"/>
     </form>
-	<br><br>
+
+	<!--If submit button pressed-->
+	{% if datasetUploaded %}
 	
 	<div class="dataframe">
 		<table id="table-data">
 			<thead>
 				<tr>
 					{% for column in df.columns %}
-						<th>{{ column }}</th>
+						<!-- Clickable Headers submit to Django backend-->
+						<th>
+							<h3>
+									{{ column }}
+							</h3>
+						</th>
+
 					{% endfor %}
 				</tr>
 			</thead>
-			<!--If submit button pressed-->
 			<div class="datarows">
-			{% if datasetUploaded %}
+				<h2> Original Data </h2>
 				{% include 'table.html' %}
-			{% endif %}
 			</div>
 		</table>
 	</div>
+	<div class="dataframe">
+		<table id="table-data">
+			<thead>
+				<tr>
+					{% for column in num_df.columns %}
+						<!-- Clickable Headers submit to Django backend-->
+						<th>
+							<input type="submit" class="data-header" value="{{ column }}"/>	
+						</th>
+
+					{% endfor %}
+				</tr>
+			</thead>
+			<div class="datarows">
+				<h2> Numerical Data </h2>
+				{% include 'num_table.html' %}
+				<tr>
+					<div id="feature-inputs" style="display: none;">
+						{% for column in num_df.columns %}
+						<td>
+							
+								<!-- Enable when data is fitted -->
+								<div  class="prediction" id="feature-{{ forloop.counter0 }}" style="display: none;">
+									<h3>
+										{{ column }} <input type="number" placeholder="{{ column }}" required>
+									</h3>	
+								</div>
+							
+						</td>
+						{% endfor %}
+						<td>
+							<input type="submit" id="predict-button" value="Predict" ></input>
+						</td>
+					</div>
+				</tr>
+			</div>
+		</table>
+	
+	</div>
+
+
+
+	<!-- Display regression line equation and plot -->
 
 	
-		<!-- Display regression line equation and plot -->
-		<div class="regression-plot">
-			<!-- Regression plot will be inserted here by JavaScript -->
-			</div>
-			<div class="regression-equation">
-			<p>Equation: Y = <span id="regression-equation-coefficients"></span></p>
-			<p>Predicted Future Value: <span id="predicted-future-value"></span></p>
-			<p>Standard Error of the Estimate: <span id="standard-error-of-the-estimate"></span></p>
-			<p>Correlation Coefficient: <span id="correlation-coefficient"></span> (<span id="correlation-description"></span>)</p>
-		</div>	
+	<div id="regression-container"></div>
+
+	{% endif %}
 
 
 
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+	<script> 
+		var columnName = "";
+		var response_tmp = "";
+		var inputs = [];
+		$(document).ready(function() {
+			// Handle click event on table header button
+			$('.data-header').click(function() {
+				
+				columnName = $(this).val();
+				// Send POST request using AJAX
+				$.ajax({
+					type: 'POST',
+					url: 'regression/',  // Replace with the URL of your Django view method
+					data: {
+						'target': columnName,
+						'csrfmiddlewaretoken': '{{ csrf_token }}'  // Include CSRF token
+					},
+					beforeSend: function(xhr, settings) {
+						// Include CSRF token in request headers
+						xhr.setRequestHeader("X-CSRFToken", '{{ csrf_token }}');
+					},
+					success: function(response) {
+						// Assuming these are the regression values you want to output
+						response_tmp = response
+						
+
+					
+						// Get the column name from the button's value
+						// Handle success response
+						console.log('POST request successful');
+						// Get the container element where you want to insert the regression values
+						var container = document.getElementById('regression-container');
+
+						y_pred = ""
+						var regressionValues = {
+							equation: response.y['equation'],
+							predictedValue: y_pred,
+							standardError: response.y['standard_error'],
+							correlationCoefficient: response.y['correlation'],
+							correlationDescription: response.y['correlation_description']
+						};
+						// Generate HTML for regression values
+						var regressionHTML = generateRegressionHTML(regressionValues);
+
+						// Insert the generated HTML into the container
+						container.inenerHTML = response;
+
+						container.innerHTML = regressionHTML;
+
+						var input = document.getElementById('feature-inputs');
+						input.style.display = 'block';
+						enableInputs()
+
+
+
+					},
+					error: function(xhr, textStatus, errorThrown) {
+						// Handle error response
+						console.error('Error:', errorThrown);
+						// You can optionally show an error message here
+					}
+				});
+			});
+			// Function to generate HTML for regression values
+			function generateRegressionHTML(values) {
+				
+				var html = '';
+				html += '<div class="regression-values">';
+				html += '<p>Equation: ' + values.equation + '</p>';
+				html += '<p>Predicted Value: ' + values.predictedValue + '</p>';
+				html += '<p>Standard Error: ' + values.standardError + '</p>';
+				html += '<p>Correlation Coefficient: ' + values.correlationCoefficient + '</p>';
+				html += '<p>Correlation Description: ' + values.correlationDescription + '</p>';
+				html += '</div>';
+				return html;
+			}
+			function enableInputs() {
+				
+				{% for column in num_df.columns %}
+					
+					// Get the input element
+					var input = document.getElementById('feature-{{ forloop.counter0 }}');
+					if ('{{ column }}' == columnName){
+						// Hide the input field
+						input.style.display = 'none';
+					}
+					else{
+						// Show the input field
+						input.style.display = 'block';
+						inputs.push(input)
+					}
+
+				{% endfor %}
+			}
+			
+			function predictInput(response) {
+				var y = response.y['weights'];
+				for (var i = 0; i < inputs.length; i++) {
+					
+					input = inputs[i]
+					if ('{{ column }}' != columnName){
+						console.log(input.value)
+						y += y['weights'] * input.value;
+					}
+				}
+				
+				return parseFloat(y).toFixed(4);
+			}
+			// Handle click event on table header button
+			$('#predict-button').click(function() {
+				
+				// Send POST request using AJAX
+				$.ajax({
+					type: 'POST',
+					url: 'predictData/',  // Replace with the URL of your Django view method
+					data: {
+						"response": response_tmp
+					},
+					beforeSend: function(xhr, settings) {
+						// Include CSRF token in request headers
+						xhr.setRequestHeader("X-CSRFToken", '{{ csrf_token }}');
+					},
+					success: function(response) {
+						console.log('POST request successful');
+
+						// Assuming these are the regression values you want to output
+						response = response_tmp
+						var container = document.getElementById('regression-container');
+
+						y_pred = predictInput(response)
+						var regressionValues = {
+							equation: response.y['equation'],
+							predictedValue: y_pred,
+							standardError: response.y['standard_error'],
+							correlationCoefficient: response.y['correlation'],
+							correlationDescription: response.y['correlation_description']
+						};
+						// Generate HTML for regression values
+						var regressionHTML = generateRegressionHTML(regressionValues);
+
+						// Insert the generated HTML into the container
+						container.inenerHTML = response;
+
+						container.innerHTML = regressionHTML;
+
+						var input = document.getElementById('feature-inputs');
+						input.style.display = 'block';
+						enableInputs()
+
+
+
+					},
+					error: function(xhr, textStatus, errorThrown) {
+						// Handle error response
+						console.error('Error:', errorThrown);
+						// You can optionally show an error message here
+					}
+				});
+			});
+		});
+
+
+		
+	</script>
 	
 {% endblock %}

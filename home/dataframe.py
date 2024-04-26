@@ -54,9 +54,9 @@ def fitData(X, y):
     linear_weights = np.linalg.solve(mat_X, mat_y).round(8)
     y_preds, sr, corr, corr_desc =  predictData(X, y, linear_weights)
 
-    y_function = f"{round(linear_weights[0], 2)}"
+    y_function = f"{round(linear_weights[0], 4)}"
     for i in range(1, len(linear_weights)):
-        linear_weight = round(linear_weights[i], 2)
+        linear_weight = round(linear_weights[i], 4)
         if linear_weight != 0:
             y_function += " + " if linear_weight > 0 else " - "
             y_function += f"{abs(linear_weight)}" if abs(linear_weight) != 1 else ""
@@ -80,7 +80,7 @@ def predictData(X, y, linear_weights):
     st = ((y - y.mean()) ** 2) .sum()
 
     # Standard Error
-    sr = ((y - y_preds_list) ** 2).sum()
+    sr = ((y - y_preds_list) ** 2).sum().round(4)
 
     # Correlation Coefficient
     corr = np.sqrt((st-sr)/st).round(4)

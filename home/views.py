@@ -13,6 +13,7 @@ import os
 @csrf_protect
 def home(request, context = {"dataFitted": False, "y_function": ""}):
     if request.method == "GET":
+        dataTable()
         context = {"dataFitted": False, "y_function": ""}
         cache.clear()
         form = DatasetUploadForm()
@@ -115,6 +116,8 @@ def home(request, context = {"dataFitted": False, "y_function": ""}):
     target = request.POST.get('target') 
     if target is not None:
         context.update(fit(num_df, target))
+    else:
+        context['data_column'] = {'X': [], 'y': ''}
     
     print(context)
     return render(request, 'home.html', context)
@@ -164,4 +167,22 @@ def regression(request):
     return JsonResponse(context)
 
 def predictData(request):
-    return JsonResponse(request.POST.get('response'), safe=False)
+    return JsonResponse(dict())
+
+
+def dataTable():
+    # Reset the table.html file
+    if os.path.exists("templates/table.html"):
+        os.remove("templates/table.html")
+    if not os.path.exists("templates/table.html"):
+        text_file = open("templates/table.html", "w")
+        text_file.write(" ")
+        text_file.close()
+
+    # Reset the num_table.html file
+    if os.path.exists("templates/num_table.html"):
+        os.remove("templates/num_table.html")
+    if not os.path.exists("templates/num_table.html"):
+        text_file = open("templates/num_table.html", "w")
+        text_file.write(" ")
+        text_file.close()
